@@ -388,9 +388,13 @@ function App() {
               <pre>{loadQuery}</pre>
               <hr />
               <NumberOfCountries db={myDuckDB} />
+              <hr />
               <LargestCountries db={myDuckDB} />
+              <hr />
               <CountryByName db={myDuckDB} />
+              <hr />
               <CountryByPopulation db={myDuckDB} />
+              <hr />
             </>
           ) : (
             <p>Loading data...</p>
