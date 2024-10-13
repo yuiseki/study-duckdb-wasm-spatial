@@ -380,7 +380,7 @@ function App() {
               className="logo logo-circle"
               alt="duckdbLogo"
             />
-            <p>DuckDB-wasm has initialized.</p>
+            <p>DuckDB-Wasm has initialized.</p>
           </header>
           {duckdbLoaded ? (
             <>
@@ -393,7 +393,7 @@ function App() {
               <CountryByPopulation db={myDuckDB} />
             </>
           ) : (
-            <p>Data loading...</p>
+            <p>Loading data...</p>
           )}
         </div>
       ) : (
@@ -406,7 +406,7 @@ function App() {
               className="logo logo-circle"
               alt="duckdbLogo"
             />
-            <p>DuckDB-wasm is initializing...</p>
+            <p>Initializing DuckDB-Wasm...</p>
           </header>
         </div>
       )}
