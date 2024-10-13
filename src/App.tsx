@@ -152,13 +152,18 @@ function App() {
       {myDuckDB ? (
         <div className="App">
           <header className="App-header">
-            <img src={reactLogo} className="App-logo" alt="reactLogo" />
-            <img src={viteLogo} className="App-logo" alt="viteLogo" />
-            <p>DuckDB-wasm has initialized!</p>
+            <img src={reactLogo} className="logo" alt="reactLogo" />
+            <img src={viteLogo} className="logo" alt="viteLogo" />
+            <img
+              src="./duckdb.jpg"
+              className="logo logo-circle"
+              alt="duckdbLogo"
+            />
+            <p>DuckDB-wasm has initialized.</p>
           </header>
           {duckdbLoaded ? (
             <>
-              <p>Data loaded!</p>
+              <p>Data loaded.</p>
               <pre>{loadQuery}</pre>
               <hr />
               <NumberOfCountries db={myDuckDB} />
@@ -171,8 +176,13 @@ function App() {
       ) : (
         <div className="App">
           <header className="App-header">
-            <img src={reactLogo} className="App-logo" alt="reactLogo" />
-            <img src={viteLogo} className="App-logo" alt="viteLogo" />
+            <img src={reactLogo} className="logo" alt="reactLogo" />
+            <img src={viteLogo} className="logo" alt="viteLogo" />
+            <img
+              src="./duckdb.jpg"
+              className="logo logo-circle"
+              alt="duckdbLogo"
+            />
             <p>DuckDB-wasm is initializing...</p>
           </header>
         </div>
