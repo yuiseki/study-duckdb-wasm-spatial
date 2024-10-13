@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import reactLogo from "./assets/react.svg";
 import viteLogo from "/vite.svg";
 import "./App.css";
@@ -11,6 +11,17 @@ import duckdb_wasm_eh from "@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url";
 import eh_worker from "@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url";
 
 import type { Table, StructRowProxy } from "apache-arrow";
+
+import Map, {
+  Layer,
+  LngLatBoundsLike,
+  MapProvider,
+  Source,
+  useMap,
+} from "react-map-gl/maplibre";
+import "maplibre-gl/dist/maplibre-gl.css";
+
+import * as turf from "@turf/turf";
 
 const MANUAL_BUNDLES: duckdb.DuckDBBundles = {
   mvp: {
@@ -88,7 +99,6 @@ const LargestCountries: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
         .toArray()
         .map((row: any) => JSON.parse(row));
       setResult(resultRows);
-      console.log(resultRows);
       await conn.close();
     };
     fetch();
@@ -107,6 +117,101 @@ const LargestCountries: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
       ) : (
         <p>Loading...</p>
       )}
+    </div>
+  );
+};
+
+const CountryByNameSourceLayer: React.FC<{
+  result: any;
+}> = ({ result }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    // 地図を中心に移動する
+    if (result && map) {
+      const [minLng, minLat, maxLng, maxLat] = turf.bbox(result);
+      const bounds = [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ] as LngLatBoundsLike;
+      map.current?.fitBounds(bounds, {
+        padding: 10,
+        duration: 500,
+      });
+    }
+  }, [result, map]);
+  return (
+    <Source type="geojson" data={result}>
+      <Layer
+        id="result"
+        type="fill"
+        paint={{ "fill-color": "red", "fill-opacity": 0.5 }}
+      />
+    </Source>
+  );
+};
+
+const CountryByName: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
+  const [countryName, setCountryName] = useState<string>("Japan");
+  const [result, setResult] = useState<any | null>(null);
+  const [query, setQuery] = useState<string | null>(null);
+
+  useEffect(() => {
+    // 国名を指定して国の情報を取得するクエリ
+    // AsGeoJson関数を使ってGeoJSON形式で取得
+    setQuery(`
+      LOAD json;
+      LOAD spatial;
+      SELECT name as name, ST_AsGeoJSON(geom) as geom FROM countries WHERE name = '${countryName}';
+    `);
+  }, [countryName]);
+
+  useEffect(() => {
+    const fetch = async () => {
+      if (!query) return;
+      const conn = await db.connect();
+      const results: Table = await conn.query(query);
+      const resultRows: StructRowProxy<any>[] = results.toArray();
+      if (resultRows.length === 0) {
+        setResult(null);
+        return;
+      }
+      // geojsonにする
+      const resultGeoJson = {
+        type: "Feature",
+        properties: { name: resultRows[0].name },
+        geometry: JSON.parse(resultRows[0].geom),
+      };
+      setResult(resultGeoJson);
+      await conn.close();
+    };
+    fetch();
+  }, [db, query]);
+
+  return (
+    <div>
+      <h2>Country by name</h2>
+      <input
+        type="text"
+        value={countryName}
+        onChange={(e) => setCountryName(e.target.value)}
+      />
+      <pre>{query}</pre>
+      {!result && <p>Loading...</p>}
+
+      <MapProvider>
+        <Map
+          style={{ width: 600, height: 400 }}
+          initialViewState={{
+            latitude: 0,
+            longitude: 0,
+            zoom: 1,
+          }}
+          mapStyle="https://tile.openstreetmap.jp/styles/osm-bright/style.json"
+        >
+          {result && <CountryByNameSourceLayer result={result} />}
+        </Map>
+      </MapProvider>
     </div>
   );
 };
@@ -137,13 +242,13 @@ function App() {
 
   useEffect(() => {
     const loadDuckDB = async (db: duckdb.AsyncDuckDB) => {
-      const c = await db.connect();
-      await c.query(loadQuery);
-      await c.close();
+      const conn = await db.connect();
+      await conn.query(loadQuery);
+      await conn.close();
+      setDuckDBLoaded(true);
     };
     if (myDuckDB) {
       loadDuckDB(myDuckDB);
-      setDuckDBLoaded(true);
     }
   }, [loadQuery, myDuckDB]);
 
@@ -168,6 +273,7 @@ function App() {
               <hr />
               <NumberOfCountries db={myDuckDB} />
               <LargestCountries db={myDuckDB} />
+              <CountryByName db={myDuckDB} />
             </>
           ) : (
             <p>Data loading...</p>
