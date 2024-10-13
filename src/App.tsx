@@ -456,8 +456,8 @@ const OverpassAPIHokoraDemo: React.FC<{ db: duckdb.AsyncDuckDB }> = ({
   return (
     <div>
       <h2>
-        Overpass API demo (Using ST_AsGeoJSON and render multiple results on the
-        map)
+        Overpass API demo (Using OpenStreetMap Overpass API and ST_AsGeoJSON,
+        render multiple results on the map)
       </h2>
       <pre>{overpassQuery}</pre>
       <pre>{query}</pre>
