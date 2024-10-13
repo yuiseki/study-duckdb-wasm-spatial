@@ -346,7 +346,7 @@ function App() {
   const loadQuery = `
     LOAD json;
     LOAD spatial;
-    CREATE TABLE countries AS SELECT * FROM ST_Read('${basename}/ne_110m_admin_0_countries.json');
+    CREATE TABLE countries AS SELECT * FROM ST_Read('${basename}ne_110m_admin_0_countries.json');
   `;
 
   useEffect(() => {
