@@ -75,7 +75,7 @@ const NumberOfCountries: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
 
   return (
     <div>
-      <h2>Number of countries</h2>
+      <h2>Number of countries (Most simple query for DuckDB-Wasm)</h2>
       <pre>{query}</pre>
       <p>{result ? <span>{result}</span> : <span>Loading...</span>}</p>
     </div>
@@ -106,7 +106,10 @@ const LargestCountries: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
 
   return (
     <div>
-      <h2>Largest countries</h2>
+      <h2>
+        Largest countries (Using ST_Area, most simple Spatial Function from
+        DuckDB-Spatial, on DuckDB-Wasm)
+      </h2>
       <pre>{query}</pre>
       {result ? (
         result.map((row, i) => (
@@ -190,7 +193,7 @@ const CountryByName: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
 
   return (
     <div>
-      <h2>Country by name</h2>
+      <h2>Country by name (Using ST_AsGeoJSON and render result on the map)</h2>
       <input
         type="text"
         value={countryName}
@@ -198,9 +201,9 @@ const CountryByName: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
       />
       <pre>{query}</pre>
       {!result && <p>Loading...</p>}
-
       <MapProvider>
         <Map
+          id="countryByNameMap"
           style={{ width: 600, height: 400 }}
           initialViewState={{
             latitude: 0,
