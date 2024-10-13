@@ -260,8 +260,8 @@ function App() {
       {myDuckDB ? (
         <div className="App">
           <header className="App-header">
-            <img src={reactLogo} className="logo" alt="reactLogo" />
             <img src={viteLogo} className="logo" alt="viteLogo" />
+            <img src={reactLogo} className="logo" alt="reactLogo" />
             <img
               src="./duckdb.jpg"
               className="logo logo-circle"
@@ -285,8 +285,8 @@ function App() {
       ) : (
         <div className="App">
           <header className="App-header">
-            <img src={reactLogo} className="logo" alt="reactLogo" />
             <img src={viteLogo} className="logo" alt="viteLogo" />
+            <img src={reactLogo} className="logo" alt="reactLogo" />
             <img
               src="./duckdb.jpg"
               className="logo logo-circle"
