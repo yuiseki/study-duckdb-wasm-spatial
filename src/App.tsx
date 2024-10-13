@@ -22,6 +22,7 @@ import Map, {
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import * as turf from "@turf/turf";
+import osmtogeojson from "osmtogeojson";
 
 const MANUAL_BUNDLES: duckdb.DuckDBBundles = {
   mvp: {
@@ -60,7 +61,7 @@ const NumberOfCountries: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
   const [result, setResult] = useState<number | null>(null);
 
   useEffect(() => {
-    const fetch = async () => {
+    const doit = async () => {
       const conn = await db.connect();
       const results: Table = await conn.query(query);
       const resultRows: StructRowProxy<any>[] = results
@@ -70,7 +71,7 @@ const NumberOfCountries: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
       setResult(values[0]);
       await conn.close();
     };
-    fetch();
+    doit();
   }, [db, query]);
 
   return (
@@ -92,7 +93,7 @@ const LargestCountries: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
   const [result, setResult] = useState<StructRowProxy<any>[] | null>(null);
 
   useEffect(() => {
-    const fetch = async () => {
+    const doit = async () => {
       const conn = await db.connect();
       const results: Table = await conn.query(query);
       const resultRows: StructRowProxy<any>[] = results
@@ -101,7 +102,7 @@ const LargestCountries: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
       setResult(resultRows);
       await conn.close();
     };
-    fetch();
+    doit();
   }, [db, query]);
 
   return (
@@ -170,7 +171,7 @@ const CountryByName: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
   }, [countryName]);
 
   useEffect(() => {
-    const fetch = async () => {
+    const doit = async () => {
       if (!query) return;
       const conn = await db.connect();
       const results: Table = await conn.query(query);
@@ -188,7 +189,7 @@ const CountryByName: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
       setResult(resultGeoJson);
       await conn.close();
     };
-    fetch();
+    doit();
   }, [db, query]);
 
   return (
@@ -274,7 +275,7 @@ const CountryByPopulation: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
   }, [minPopulation]);
 
   useEffect(() => {
-    const fetch = async () => {
+    const doit = async () => {
       if (!query) return;
       const conn = await db.connect();
       const results: Table = await conn.query(query);
@@ -292,7 +293,7 @@ const CountryByPopulation: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
       setResults(resultGeoJson);
       await conn.close();
     };
-    fetch();
+    doit();
   }, [db, query]);
 
   return (
@@ -326,6 +327,153 @@ const CountryByPopulation: React.FC<{ db: duckdb.AsyncDuckDB }> = ({ db }) => {
           mapStyle="https://tile.openstreetmap.jp/styles/osm-bright/style.json"
         >
           {results && <CountryByPopulationSourceLayer results={results} />}
+        </Map>
+      </MapProvider>
+    </div>
+  );
+};
+
+const OverpassAPIHokoraSourceLayer: React.FC<{
+  results: any;
+}> = ({ results }) => {
+  const { overpassAPIHokoraMap: map } = useMap();
+
+  useEffect(() => {
+    if (results && map) {
+      const [minLng, minLat, maxLng, maxLat] = turf.bbox(results);
+      const bounds = [
+        [minLng, minLat],
+        [maxLng, maxLat],
+      ] as LngLatBoundsLike;
+      map?.fitBounds(bounds, {
+        padding: 10,
+        duration: 500,
+      });
+    }
+  }, [results, map]);
+
+  // hokora is point
+  return (
+    <>
+      <Source type="geojson" data={results}>
+        <Layer
+          id={`result-hoge`}
+          type="circle"
+          paint={{
+            "circle-radius": 5,
+            "circle-color": "red",
+            "circle-opacity": 0.5,
+          }}
+        />
+      </Source>
+    </>
+  );
+};
+
+// Overpass API で取得したGeoJSONをDuckDB-Wasmで処理するデモ
+const OverpassAPIHokoraDemo: React.FC<{ db: duckdb.AsyncDuckDB }> = ({
+  db,
+}) => {
+  const [results, setResults] = useState<any | null>(null);
+  const [query, setQuery] = useState<string | null>(null);
+  const [overpassQuery, setOverpassQuery] = useState<string | null>(null);
+  const [loadingOverpass, setLoadingOverpass] = useState<boolean>(false);
+
+  useEffect(() => {
+    // Overpass API で国境を取得するクエリ
+    setOverpassQuery(`
+        [out:json];
+        area["ISO3166-1"="JP"][admin_level=2];
+        node["historic"="wayside_shrine"](area);
+        out;
+    `);
+  }, []);
+
+  useEffect(() => {
+    const doit = async () => {
+      if (!overpassQuery) return;
+      setLoadingOverpass(true);
+      const response = await fetch(
+        `https://z.overpass-api.de/api/interpreter?data=${encodeURIComponent(
+          overpassQuery
+        )}`
+      );
+      const resjson = await response.json();
+      const geojsonData = osmtogeojson(resjson);
+      const conn = await db.connect();
+      // jp_hokoraという空のテーブルを作成
+      await conn.query(`
+        CREATE TABLE jp_hokora (name TEXT, geom GEOMETRY);
+      `);
+      // jp_hokoraにgeojsonDataのfeaturesを挿入
+      for (const feature of geojsonData.features) {
+        // feature.propertiesとfeature.properties.nameがないものはスキップ
+        if (!feature.properties?.name) continue;
+        // エスケープする
+        const name = feature.properties.name.replace(/'/g, "''");
+        await conn.query(`
+          INSERT INTO jp_hokora VALUES ('${
+            name || "NoName"
+          }', ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}'));
+        `);
+      }
+
+      setQuery(`
+        SELECT name as name, ST_AsGeoJSON(geom) as geom FROM jp_hokora;
+      `);
+      await conn.close();
+      setLoadingOverpass(false);
+    };
+    doit();
+  }, [db, overpassQuery]);
+
+  useEffect(() => {
+    const doit = async () => {
+      if (loadingOverpass) return;
+      if (!query) return;
+      const conn = await db.connect();
+      const results: Table = await conn.query(query);
+      const resultRows: StructRowProxy<any>[] = results.toArray();
+      if (resultRows.length === 0) {
+        setResults(null);
+        return;
+      }
+      // geojsonにする
+      const resultGeoJson = resultRows.map((row) => ({
+        type: "Feature",
+        properties: { name: row.name },
+        geometry: JSON.parse(row.geom),
+      }));
+      setResults({
+        type: "FeatureCollection",
+        features: resultGeoJson,
+      });
+      await conn.close();
+    };
+    doit();
+  }, [db, loadingOverpass, query]);
+
+  return (
+    <div>
+      <h2>
+        Overpass API demo (Using ST_AsGeoJSON and render multiple results on the
+        map)
+      </h2>
+      <pre>{overpassQuery}</pre>
+      <pre>{query}</pre>
+      {!results && <p>Loading...</p>}
+      <MapProvider>
+        <Map
+          id="overpassAPIHokoraMap"
+          style={{ width: 600, height: 400 }}
+          initialViewState={{
+            latitude: 0,
+            longitude: 0,
+            zoom: 1,
+          }}
+          mapStyle="https://tile.openstreetmap.jp/styles/osm-bright/style.json"
+        >
+          {results && <OverpassAPIHokoraSourceLayer results={results} />}
         </Map>
       </MapProvider>
     </div>
@@ -394,6 +542,8 @@ function App() {
               <CountryByName db={myDuckDB} />
               <hr />
               <CountryByPopulation db={myDuckDB} />
+              <hr />
+              <OverpassAPIHokoraDemo db={myDuckDB} />
               <hr />
             </>
           ) : (
