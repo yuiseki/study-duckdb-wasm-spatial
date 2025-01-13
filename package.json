@@ -13,7 +13,7 @@
     "@duckdb/duckdb-wasm": "^1.29.0",
     "@turf/turf": "^7.1.0",
     "apache-arrow": "^18.0.0",
-    "maplibre-gl": "^4.7.1",
+    "maplibre-gl": "^5.0.0",
     "osmtogeojson": "^3.0.0-beta.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
